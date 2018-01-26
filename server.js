@@ -3,6 +3,8 @@ const fs = require(`fs`);
 const querystring = require('querystring');
 const elementPageMaker = require(`./elementPageMaker.js`);
 const indexPageMaker = require(`./indexPageMaker.js`);
+const username = `devleaguer`;
+const password = `hydroflask`;
 const files = {
   elements: {
     '/helium.html': true,
@@ -16,6 +18,12 @@ const files = {
 const PORT = process.env.port || 8080;
 
 const server = http.createServer((request, response) => {
+  if (request.method === `POST` || request.method === `PUT` || request.method === `DELETE`) {
+    if (!checkAuthentication(request, response)) {
+      return;
+    }
+  }
+
   request.url = request.url === `/` ? `/index.html` : request.url;
   if (!request.url.endsWith(`.html`) && !request.url.endsWith(`.css`)) {
     request.url += `.html`;
@@ -136,4 +144,27 @@ function sendForbiddenMessage(request, response) {
   response.writeHead(403, `Forbidden`);
   response.write(JSON.stringify({ 'error': `resource ${request.url} cannot be deleted or modified` }));
   response.end();
+}
+
+function checkAuthentication(request, response) {
+  if (request.headers.hasOwnProperty(`authorization`)) {
+    let decodedString = new Buffer(request.headers.authorization.split(` `)[1], `base64`);
+    decodedString = decodedString.toString();
+    let user = decodedString.split(`:`)[0];
+    let userPassword = decodedString.split(`:`)[1];
+    if (user !== username || userPassword !== password) {
+      response.setHeader(`WWW-Authenticate`, `Basic realm='Secure Area'`);
+      response.writeHead(401, `Unauthorized`);
+      response.write(`<html><body>Invalid Authentication Credentials</body></html>`);
+      response.end();
+      return false;
+    }
+    return true;
+  } else {
+    response.setHeader(`WWW-Authenticate`, `Basic realm='Secure Area'`);
+    response.writeHead(401, `Unauthorized`);
+    response.write(`<html><body>Not Authorized</body></html>`);
+    response.end();
+    return false;
+  }
 }
