@@ -23,8 +23,7 @@ const server = http.createServer((request, response) => {
       break;
     case `POST`:
       if (files.elements.hasOwnProperty(request.url)) {
-        response.writeHead(200, `OK`);
-        response.end();
+        sendSuccessMessage(response);
       } else {
         createPage(request, response);
       }
@@ -33,10 +32,7 @@ const server = http.createServer((request, response) => {
       if (files.elements.hasOwnProperty(request.url)) {
         createPage(request, response);
       } else {
-        response.setHeader(`Content-Type`, `application/json`);
-        response.writeHead(500, `Server error`);
-        response.write(JSON.stringify({ 'error': `resource ${request.url} does not exist` }));
-        response.end();
+        sendServerError(request, response);
       }
       break;
     case `DELETE`:
@@ -48,10 +44,7 @@ const server = http.createServer((request, response) => {
       } else if (files.elements.hasOwnProperty(request.url)) {
         deleteFile(response, request.url);
       } else {
-        response.setHeader(`Content-Type`, `application/json`);
-        response.writeHead(500, `Server-error`);
-        response.write(JSON.stringify({ 'error': `resource ${request.url} does not exist` }));
-        response.end();
+        sendServerError(request, response);
       }
       break;
   };
@@ -82,21 +75,11 @@ function writeToFile(response, path, data, method) {
     if (err) {
       console.log(err);
     } else {
-      switch (method) {
-        case `POST`:
-          files.elements[`/${path.split(`/`).slice(2).join(`/`)}`] = true;
-          updateIndexPage();
-          response.setHeader(`Content-Type`, `application/json`);
-          response.writeHead(200, `OK`);
-          response.write(JSON.stringify({ 'success': true }));
-          break;
-        case `PUT`:
-          response.setHeader(`Content-Type`, `application/json`);
-          response.writeHead(200, `OK`);
-          response.write(JSON.stringify({ 'success': true }));
-          break;
+      if (method === `POST`) {
+        files.elements[`/${path.split(`/`).slice(2).join(`/`)}`] = true;
+        updateIndexPage();
       }
-      response.end();
+      sendSuccessMessage(response);
     }
   });
 }
@@ -108,10 +91,7 @@ function deleteFile(response, path) {
     } else {
       delete files.elements[path];
       updateIndexPage();
-      response.setHeader(`Content-Type`, `application/json`);
-      response.writeHead(200, `OK`);
-      response.write(JSON.stringify({ 'success': true }));
-      response.end();
+      sendSuccessMessage(response);
     }
   });
 }
@@ -139,4 +119,12 @@ function sendSuccessMessage(response) {
   response.setHeader(`Content-Type`, `application/json`);
   response.writeHead(200, `OK`);
   response.write(JSON.stringify({ 'success': true }));
+  response.end();
+}
+
+function sendServerError(request, response) {
+  response.setHeader(`Content-Type`, `application/json`);
+  response.writeHead(500, `Server-error`);
+  response.write(JSON.stringify({ 'error': `resource ${request.url} does not exist` }));
+  response.end();
 }
