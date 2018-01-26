@@ -18,16 +18,20 @@ const files = {
 const PORT = process.env.port || 8080;
 
 const server = http.createServer((request, response) => {
+  // Check authentication
   if (request.method === `POST` || request.method === `PUT` || request.method === `DELETE`) {
     if (!checkAuthentication(request, response)) {
       return;
     }
   }
 
+  // Modify url if there is no .html 
   request.url = request.url === `/` ? `/index.html` : request.url;
   if (!request.url.endsWith(`.html`) && !request.url.endsWith(`.css`)) {
     request.url += `.html`;
   }
+
+  // Handle methods
   switch (request.method) {
     case `GET`:
       readFromFile(response, request.url);
@@ -56,6 +60,12 @@ const server = http.createServer((request, response) => {
       } else {
         sendServerError(request, response);
       }
+      break;
+    default:
+      response.setHeader(`Content-Type`, `application/json`);
+      response.writeHead(501, `Not implemented`);
+      response.write(JSON.stringify({ 'Error': `${request.method} method is not support by server.`}));
+      response.end();
       break;
   };
 });
