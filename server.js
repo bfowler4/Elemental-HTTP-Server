@@ -17,6 +17,9 @@ const PORT = process.env.port || 8080;
 
 const server = http.createServer((request, response) => {
   request.url = request.url === `/` ? `/index.html` : request.url;
+  if (!request.url.endsWith(`.html`) && !request.url.endsWith(`.css`)) {
+    request.url += `.html`;
+  }
   switch (request.method) {
     case `GET`:
       readFromFile(response, request.url);
@@ -29,7 +32,9 @@ const server = http.createServer((request, response) => {
       }
       break;
     case `PUT`:
-      if (files.elements.hasOwnProperty(request.url)) {
+      if (files.hasOwnProperty(request.url)) {
+        sendForbiddenMessage(request, response);
+      } else if (files.elements.hasOwnProperty(request.url)) {
         createPage(request, response);
       } else {
         sendServerError(request, response);
@@ -37,10 +42,7 @@ const server = http.createServer((request, response) => {
       break;
     case `DELETE`:
       if (files.hasOwnProperty(request.url)) {
-        response.setHeader(`Content-Type`, `application/json`);
-        response.writeHead(403, `Forbidden`);
-        response.write(JSON.stringify({ 'error': `resource ${request.url} cannot be deleted`}));
-        response.end();
+        sendForbiddenMessage(request, response);
       } else if (files.elements.hasOwnProperty(request.url)) {
         deleteFile(response, request.url);
       } else {
@@ -126,5 +128,12 @@ function sendServerError(request, response) {
   response.setHeader(`Content-Type`, `application/json`);
   response.writeHead(500, `Server-error`);
   response.write(JSON.stringify({ 'error': `resource ${request.url} does not exist` }));
+  response.end();
+}
+
+function sendForbiddenMessage(request, response) {
+  response.setHeader(`Content-Type`, `application/json`);
+  response.writeHead(403, `Forbidden`);
+  response.write(JSON.stringify({ 'error': `resource ${request.url} cannot be deleted or modified` }));
   response.end();
 }
