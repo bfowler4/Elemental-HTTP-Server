@@ -16,10 +16,10 @@ const files = {
 const PORT = process.env.port || 8080;
 
 const server = http.createServer((request, response) => {
+  request.url = request.url === `/` ? `/index.html` : request.url;
   switch (request.method) {
     case `GET`:
-      let path = request.url === `/` ? `/index.html` : request.url;
-      readFromFile(response, path);
+      readFromFile(response, request.url);
       break;
     case `POST`:
       if (files.elements.hasOwnProperty(request.url)) {
@@ -39,7 +39,20 @@ const server = http.createServer((request, response) => {
         response.end();
       }
       break;
-    default:
+    case `DELETE`:
+      if (files.hasOwnProperty(request.url)) {
+        response.setHeader(`Content-Type`, `application/json`);
+        response.writeHead(403, `Forbidden`);
+        response.write(JSON.stringify({ 'error': `resource ${request.url} cannot be deleted`}));
+        response.end();
+      } else if (files.elements.hasOwnProperty(request.url)) {
+        deleteFile(response, request.url);
+      } else {
+        response.setHeader(`Content-Type`, `application/json`);
+        response.writeHead(500, `Server-error`);
+        response.write(JSON.stringify({ 'error': `resource ${request.url} does not exist` }));
+        response.end();
+      }
       break;
   };
 });
@@ -74,7 +87,7 @@ function writeToFile(response, path, data, method) {
           files.elements[`/${path.split(`/`).slice(2).join(`/`)}`] = true;
           updateIndexPage();
           response.setHeader(`Content-Type`, `application/json`);
-          response.writeHead(201, `Created`);
+          response.writeHead(200, `OK`);
           response.write(JSON.stringify({ 'success': true }));
           break;
         case `PUT`:
@@ -83,6 +96,21 @@ function writeToFile(response, path, data, method) {
           response.write(JSON.stringify({ 'success': true }));
           break;
       }
+      response.end();
+    }
+  });
+}
+
+function deleteFile(response, path) {
+  fs.unlink(`./public${path}`, (err) => {
+    if (err) {
+      console.log(err);
+    } else {
+      delete files.elements[path];
+      updateIndexPage();
+      response.setHeader(`Content-Type`, `application/json`);
+      response.writeHead(200, `OK`);
+      response.write(JSON.stringify({ 'success': true }));
       response.end();
     }
   });
@@ -105,4 +133,10 @@ function createPage(request, response) {
     let newPage = elementPageMaker(dataObject);
     writeToFile(response, `./public${request.url}`, newPage, request.method);
   });
+}
+
+function sendSuccessMessage(response) {
+  response.setHeader(`Content-Type`, `application/json`);
+  response.writeHead(200, `OK`);
+  response.write(JSON.stringify({ 'success': true }));
 }
