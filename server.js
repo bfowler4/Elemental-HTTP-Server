@@ -93,11 +93,11 @@ function readFromFile(response, path) {
 function writeToFile(response, path, data, method) {
   fs.writeFile(path, data, (err) => {
     if (err) {
-      console.log(err);
+      sendInternalServerError(response);
     } else {
       if (method === `POST`) {
         files.elements[`/${path.split(`/`).slice(2).join(`/`)}`] = true;
-        updateIndexPage();
+        updateIndexPage(response);
       }
       sendSuccessMessage(response);
     }
@@ -107,19 +107,19 @@ function writeToFile(response, path, data, method) {
 function deleteFile(response, path) {
   fs.unlink(`./public${path}`, (err) => {
     if (err) {
-      console.log(err);
+      sendInternalServerError(response);
     } else {
       delete files.elements[path];
-      updateIndexPage();
+      updateIndexPage(response);
       sendSuccessMessage(response);
     }
   });
 }
 
-function updateIndexPage() {
+function updateIndexPage(response) {
   fs.writeFile(`./public/index.html`, indexPageMaker(files.elements), (err) => {
     if (err) {
-      console.log(err);
+      sendInternalServerError(response);
     } else {
       console.log(`updated index page`);
     }
@@ -146,6 +146,13 @@ function sendServerError(request, response) {
   response.setHeader(`Content-Type`, `application/json`);
   response.writeHead(500, `Server-error`);
   response.write(JSON.stringify({ 'error': `resource ${request.url} does not exist` }));
+  response.end();
+}
+
+function sendInternalServerError(response) {
+  response.setHeader(`Content-Type`, `application/json`);
+  response.writeHead(500, `Server-error`);
+  response.write(JSON.stringify({ 'error': `Internal servor error.` }));
   response.end();
 }
 
